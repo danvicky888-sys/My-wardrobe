@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Wardrobe - 我的智能衣櫥</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .clothing-card:hover .delete-btn { opacity: 1; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold text-indigo-600 tracking-tight">Smart Wardrobe</h1>
+                <p class="text-slate-500 mt-1">目前共有 <span id="totalCount" class="font-bold text-indigo-500">0</span> 件時尚單品</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="searchInput" oninput="renderApp()" placeholder="搜尋衣服名稱..." class="px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none w-full md:w-64 shadow-sm">
+                <button onclick="toggleModal()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-all shadow-lg flex items-center gap-2 shrink-0">
+                    <i class="fas fa-plus"></i> 新增
+                </button>
+            </div>
+        </header>
+
+        <nav class="flex gap-2 mb-8 overflow-x-auto pb-2 no-scrollbar" id="categoryFilters">
+            <button onclick="setFilter('全部')" class="filter-btn active bg-indigo-600 text-white px-5 py-2 rounded-full whitespace-nowrap shadow-sm">全部</button>
+            <button onclick="setFilter('上衣')" class="filter-btn bg-white text-slate-600 px-5 py-2 rounded-full border border-slate-200 whitespace-nowrap hover:bg-slate-100">上衣</button>
+            <button onclick="setFilter('褲裝')" class="filter-btn bg-white text-slate-600 px-5 py-2 rounded-full border border-slate-200 whitespace-nowrap hover:bg-slate-100">褲裝</button>
+            <button onclick="setFilter('外套')" class="filter-btn bg-white text-slate-600 px-5 py-2 rounded-full border border-slate-200 whitespace-nowrap hover:bg-slate-100">外套</button>
+            <button onclick="setFilter('鞋子')" class="filter-btn bg-white text-slate-600 px-5 py-2 rounded-full border border-slate-200 whitespace-nowrap hover:bg-slate-100">鞋子</button>
+            <button onclick="setFilter('配件')" class="filter-btn bg-white text-slate-600 px-5 py-2 rounded-full border border-slate-200 whitespace-nowrap hover:bg-slate-100">配件</button>
+        </nav>
+
+        <div id="wardrobeGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            </div>
+
+        <div id="emptyState" class="hidden text-center py-20">
+            <i class="fas fa-tshirt text-slate-200 text-6xl mb-4"></i>
+            <p class="text-slate-400">目前沒有找到相關衣物，快去新增吧！</p>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 backdrop-blur-sm z-50">
+        <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transition-all">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="text-xl font-bold">記錄新衣服</h2>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">衣服照片</label>
+                    <input type="file" id="itemImage" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">名稱</label>
+                    <input type="text" id="itemName" placeholder="例如：寬鬆藍色衛衣" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">分類</label>
+                    <select id="itemCategory" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-400">
+                        <option value="上衣">👕 上衣</option>
+                        <option value="褲裝">👖 褲裝</option>
+                        <option value="外套">🧥 外套</option>
+                        <option value="鞋子">👟 鞋子</option>
+                        <option value="配件">👒 配件</option>
+                    </select>
+                </div>
+                <button onclick="addItem()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg mt-4">儲存到衣櫥</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let clothes = JSON.parse(localStorage.getItem('wardrobe_v2')) || [];
+        let currentFilter = '全部';
+
+        function toggleModal() {
+            document.getElementById('modal').classList.toggle('hidden');
+        }
+
+        function setFilter(category) {
+            currentFilter = category;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if(btn.innerText === category) {
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                    btn.classList.remove('bg-white', 'text-slate-600');
+                } else {
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-slate-600');
+                }
+            });
+            renderApp();
+        }
+
+        function addItem() {
+            const name = document.getElementById('itemName').value;
+            const category = document.getElementById('itemCategory').value;
+            const fileInput = document.getElementById('itemImage');
+            
+            if (!name) return alert('請輸入衣服名稱！');
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const newItem = {
+                        id: Date.now(),
+                        name: name,
+                        category: category,
+                        image: e.target.result,
+                        date: new Date().toLocaleDateString()
+                    };
+                    saveItem(newItem);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                const newItem = {
+                    id: Date.now(),
+                    name: name,
+                    category: category,
+                    image: 'https://via.placeholder.com/300x400?text=No+Image',
+                    date: new Date().toLocaleDateString()
+                };
+                saveItem(newItem);
+            }
+        }
+
+        function saveItem(item) {
+            clothes.push(item);
+            localStorage.setItem('wardrobe_v2', JSON.stringify(clothes));
+            toggleModal();
+            // 清空表單
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemImage').value = '';
+            renderApp();
+        }
+
+        function deleteItem(id) {
+            if(confirm('確定要從衣櫥移除這件衣服嗎？')) {
+                clothes = clothes.filter(item => item.id !== id);
+                localStorage.setItem('wardrobe_v2', JSON.stringify(clothes));
+                renderApp();
+            }
+        }
+
+        function renderApp() {
+            const grid = document.getElementById('wardrobeGrid');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const emptyState = document.getElementById('emptyState');
+            
+            grid.innerHTML = '';
+            
+            const filtered = clothes.filter(item => {
+                const matchesFilter = currentFilter === '全部' || item.category === currentFilter;
+                const matchesSearch = item.name.toLowerCase().includes(searchVal);
+                return matchesFilter && matchesSearch;
+            });
+
+            document.getElementById('totalCount').innerText = clothes.length;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.sort((a,b) => b.id - a.id).forEach(item => {
+                    grid.innerHTML += `
+                        <div class="clothing-card group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100">
+                            <div class="aspect-[3/4] overflow-hidden bg-slate-100 relative">
+                                <img src="${item.image}" class="w-full h-full object-cover">
+                                <button onclick="deleteItem(${item.id})" class="delete-btn opacity-0 absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                                <div class="absolute bottom-2 left-2">
+                                    <span class="bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md uppercase font-bold tracking-wider">
+                                        ${item.category}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-bold text-slate-800 truncate mb-1">${item.name}</h3>
+                                <p class="text-[10px] text-slate-400 uppercase font-semibold">加入日期: ${item.date}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        renderApp();
+    </script>
+</body>
+</html>
