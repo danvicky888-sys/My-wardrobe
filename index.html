@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的雲端衣櫥</title>
+    
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="我的衣櫥">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .active-filter { background-color: #4f46e5 !important; color: white !important; }
+        @keyframes slide-up {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-900 select-none">
+
+    <div class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 pt-12 pb-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-black text-indigo-600">MY CLOSET</h1>
+            <span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-bold" id="itemCount">0 ITEMS</span>
+        </div>
+    </div>
+
+    <div class="sticky top-[93px] z-20 bg-gray-50 pt-4 pb-2">
+        <div class="px-4 mb-4">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" id="search" oninput="render()" placeholder="搜尋你的衣櫃..." class="w-full bg-white border-none rounded-2xl py-3 pl-10 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+        </div>
+        <div class="flex gap-2 overflow-x-auto px-4 no-scrollbar pb-2" id="filterBar">
+            <button onclick="setTab('全部')" class="filter-btn active-filter bg-white px-5 py-2 rounded-xl shadow-sm text-sm font-medium whitespace-nowrap">全部</button>
+            <button onclick="setTab('上衣')" class="filter-btn bg-white px-5 py-2 rounded-xl shadow-sm text-sm font-medium whitespace-nowrap">上衣</button>
+            <button onclick="setTab('下著')" class="filter-btn bg-white px-5 py-2 rounded-xl shadow-sm text-sm font-medium whitespace-nowrap">下著</button>
+            <button onclick="setTab('外套')" class="filter-btn bg-white px-5 py-2 rounded-xl shadow-sm text-sm font-medium whitespace-nowrap">外套</button>
+            <button onclick="setTab('鞋子')" class="filter-btn bg-white px-5 py-2 rounded-xl shadow-sm text-sm font-medium whitespace-nowrap">鞋子</button>
+        </div>
+    </div>
+
+    <main class="px-4 pb-32 pt-2">
+        <div id="grid" class="grid grid-cols-2 gap-4">
+            </div>
+        <div id="empty" class="hidden text-center py-20 text-gray-400">
+            <i class="fas fa-ghost text-5xl mb-4 opacity-20"></i>
+            <p>這裡空空如也...</p>
+        </div>
+    </main>
+
+    <div class="fixed bottom-8 left-0 right-0 flex justify-center z-40 safe-bottom">
+        <button onclick="openModal()" class="bg-indigo-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:scale-110 transition-transform active:scale-95">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] p-8 animate-slide-up shadow-2xl transition-all">
+            <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <h2 class="text-xl font-bold mb-6">新增衣物</h2>
+            
+            <div class="space-y-4 mb-8">
+                <div class="flex gap-4 items-center bg-gray-50 p-4 rounded-2xl">
+                    <div class="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-300 relative overflow-hidden">
+                        <i class="fas fa-camera text-2xl"></i>
+                        <input type="file" id="imgInput" accept="image/*" class="absolute inset-0 opacity-0" onchange="previewImg(this)">
+                        <img id="preview" class="hidden absolute inset-0 w-full h-full object-cover">
+                    </div>
+                    <input type="text" id="name" placeholder="這件衣服叫什麼？" class="flex-1 bg-transparent border-none outline-none font-medium">
+                </div>
+
+                <select id="cat" class="w-full bg-gray-50 border-none p-4 rounded-2xl outline-none appearance-none font-medium text-indigo-600">
+                    <option value="上衣">上衣</option>
+                    <option value="下著">下著</option>
+                    <option value="外套">外套</option>
+                    <option value="鞋子">鞋子</option>
+                    <option value="配件">配件</option>
+                </select>
+            </div>
+
+            <button onclick="save()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:bg-indigo-700">完成並存檔</button>
+        </div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('wardrobe_app')) || [];
+        let currentTab = '全部';
+
+        // PWA Service Worker 註冊
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker 註冊成功:', registration);
+                    })
+                    .catch(error => {
+                        console.error('ServiceWorker 註冊失敗:', error);
+                    });
+            });
+        }
+
+        function openModal() { 
+            document.getElementById('modal').classList.remove('hidden'); 
+            // 重置 modal 內容
+            document.getElementById('name').value = '';
+            document.getElementById('imgInput').value = ''; // 清空檔案選擇
+            document.getElementById('preview').src = ''; // 清空圖片預覽
+            document.getElementById('preview').classList.add('hidden');
+        }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function previewImg(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('preview').src = e.target.result;
+                    document.getElementById('preview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function save() {
+            const name = document.getElementById('name').value;
+            const cat = document.getElementById('cat').value;
+            const img = document.getElementById('preview').src;
+
+            if(!name) {
+                alert('請輸入名稱');
+                return;
+            }
+
+            db.push({ id: Date.now(), name, cat, img: img.includes('camera') || img === '' ? null : img }); // 若無圖片或為預設圖示，則存null
+            localStorage.setItem('wardrobe_app', JSON.stringify(db));
+            
+            // 重置並關閉
+            closeModal();
+            render();
+        }
+
+        function remove(id) {
+            if(confirm('要刪除這件衣服嗎？')) {
+                db = db.filter(i => i.id !== id);
+                localStorage.setItem('wardrobe_app', JSON.stringify(db));
+                render();
+            }
+        }
+
+        function setTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('active-filter');
+                if(b.innerText === tab) b.classList.add('active-filter');
+            });
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('grid');
+            const search = document.getElementById('search').value.toLowerCase();
+            const filtered = db.filter(i => (currentTab === '全部' || i.cat === currentTab) && i.name.toLowerCase().includes(search));
+            
+            document.getElementById('itemCount').innerText = `${db.length} ITEMS`;
+            document.getElementById('empty').classList.toggle('hidden', filtered.length > 0);
+            
+            grid.innerHTML = filtered.map(i => `
+                <div class="bg-white rounded-[24px] overflow-hidden shadow-sm border border-gray-100 relative group animate-fade-in">
+                    <div class="aspect-[4/5] bg-gray-100">
+                        <img src="${i.img || 'https://via.placeholder.com/200x250?text=NO+IMAGE'}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-3">
+                        <p class="text-xs font-bold text-indigo-500 uppercase mb-0.5">${i.cat}</p>
+                        <p class="font-medium text-sm truncate text-slate-700">${i.name}</p>
+                    </div>
+                    <button onclick="remove(${i.id})" class="absolute top-2 right-2 bg-white/80 backdrop-blur w-7 h-7 rounded-full text-red-500 text-xs shadow-sm"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        render();
+    </script>
+</body>
+</html>
