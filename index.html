@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>超級衣櫥 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
+        body { -webkit-tap-highlight-color: transparent; padding-bottom: calc(80px + var(--safe-bottom)); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .active-nav { color: #4f46e5; border-top: 3px solid #4f46e5; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b px-6 pt-10 pb-4 flex justify-between items-center">
+        <h1 id="pageTitle" class="text-xl font-black text-indigo-600 uppercase">My Wardrobe</h1>
+        <div class="flex gap-3">
+            <button onclick="exportData()" class="text-slate-400"><i class="fas fa-file-export"></i></button>
+            <button onclick="document.getElementById('importFile').click()" class="text-slate-400"><i class="fas fa-file-import"></i></button>
+            <input type="file" id="importFile" class="hidden" onchange="importData(event)">
+        </div>
+    </header>
+
+    <main class="p-4">
+        
+        <section id="wardrobeSection" class="tab-content active">
+            <div class="flex gap-2 overflow-x-auto no-scrollbar mb-4" id="catFilterBar">
+                </div>
+            <div id="itemGrid" class="grid grid-cols-2 gap-4"></div>
+        </section>
+
+        <section id="outfitSection" class="tab-content">
+            <div class="bg-indigo-600 p-6 rounded-3xl text-white mb-6">
+                <h3 class="font-bold">穿搭靈感</h3>
+                <p class="text-sm opacity-80">組合你的單品，記錄每日心情</p>
+            </div>
+            <div id="outfitGrid" class="grid grid-cols-1 gap-4"></div>
+        </section>
+
+        <section id="statsSection" class="tab-content">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-2xl shadow-sm">
+                    <p class="text-xs text-slate-400">總資產價值</p>
+                    <p class="text-xl font-bold" id="totalValue">$0</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm">
+                    <p class="text-xs text-slate-400">平均單價</p>
+                    <p class="text-xl font-bold" id="avgPrice">$0</p>
+                </div>
+            </div>
+            <h3 class="font-bold mb-4">⚠️ 斷捨離建議</h3>
+            <div id="cleanupList" class="space-y-3"></div>
+        </section>
+
+        <section id="settingsSection" class="tab-content">
+            <div class="bg-white rounded-2xl p-4 mb-6">
+                <h3 class="font-bold mb-4 border-b pb-2">管理分類</h3>
+                <div class="flex gap-2 flex-wrap mb-4" id="manageCats"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="newCatInput" placeholder="新分類名稱" class="flex-1 bg-slate-100 p-2 rounded-lg text-sm">
+                    <button onclick="addCategory()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">新增</button>
+                </div>
+            </div>
+            <div class="text-xs text-slate-400 text-center">
+                <p>超級衣櫥 Pro v1.0</p>
+                <p>數據存儲於本地瀏覽器</p>
+            </div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around items-center safe-bottom h-16 z-50">
+        <button onclick="switchTab('wardrobe')" class="nav-btn active-nav flex flex-col items-center flex-1 py-2"><i class="fas fa-tshirt"></i><span class="text-[10px]">衣櫥</span></button>
+        <button onclick="switchTab('outfit')" class="nav-btn flex flex-col items-center flex-1 py-2"><i class="fas fa-wand-magic-sparkles"></i><span class="text-[10px]">穿搭</span></button>
+        <button onclick="openAddModal()" class="bg-indigo-600 text-white w-12 h-12 rounded-full -mt-10 shadow-lg flex items-center justify-center text-xl"><i class="fas fa-plus"></i></button>
+        <button onclick="switchTab('stats')" class="nav-btn flex flex-col items-center flex-1 py-2"><i class="fas fa-chart-pie"></i><span class="text-[10px]">分析</span></button>
+        <button onclick="switchTab('settings')" class="nav-btn flex flex-col items-center flex-1 py-2"><i class="fas fa-cog"></i><span class="text-[10px]">設定</span></button>
+    </nav>
+
+    <div id="itemModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-end">
+        <div class="bg-white w-full rounded-t-[32px] p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modalTitle" class="text-xl font-bold">編輯衣物</h2>
+                <button onclick="closeModal()" class="text-slate-400 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <div class="w-24 h-24 bg-slate-100 rounded-2xl relative overflow-hidden flex items-center justify-center">
+                        <i class="fas fa-camera text-slate-300 text-2xl"></i>
+                        <input type="file" id="itemImg" accept="image/*" class="absolute inset-0 opacity-0" onchange="previewFile(this)">
+                        <img id="modalPreview" class="absolute inset-0 w-full h-full object-cover hidden">
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <input type="text" id="itemName" placeholder="名稱 (如：藍色衛衣)" class="w-full border-b p-2 outline-none">
+                        <select id="itemCat" class="w-full border-b p-2 outline-none bg-transparent"></select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400">購買價格</label>
+                        <input type="number" id="itemPrice" placeholder="$" class="w-full border-b p-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">購買日期</label>
+                        <input type="date" id="itemDate" class="w-full border-b p-2 outline-none">
+                    </div>
+                </div>
+                <div class="pt-6 flex gap-3">
+                    <button id="deleteBtn" onclick="deleteCurrentItem()" class="flex-1 bg-red-50 text-red-500 py-4 rounded-2xl font-bold hidden">刪除</button>
+                    <button onclick="saveItem()" class="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg">儲存單品</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 資料結構初始化
+        let state = JSON.parse(localStorage.getItem('wardrobe_pro')) || {
+            items: [],
+            outfits: [],
+            categories: ["上衣", "下著", "外套", "鞋子", "配件"]
+        };
+
+        let editingId = null;
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
+            document.getElementById(tab + 'Section').classList.add('active');
+            render();
+        }
+
+        function render() {
+            renderWardrobe();
+            renderSettings();
+            renderStats();
+            renderOutfits();
+            localStorage.setItem('wardrobe_pro', JSON.stringify(state));
+        }
+
+        // --- 1. 衣櫥功能 ---
+        function renderWardrobe() {
+            const grid = document.getElementById('itemGrid');
+            grid.innerHTML = state.items.map(item => `
+                <div onclick="openEditModal(${item.id})" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                    <div class="aspect-square bg-slate-100">
+                        <img src="${item.img || 'https://via.placeholder.com/200'}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-3">
+                        <p class="text-[10px] font-bold text-indigo-500 uppercase">${item.cat}</p>
+                        <p class="font-medium text-sm truncate">${item.name}</p>
+                        <p class="text-xs text-slate-400 mt-1">$${item.price || 0}</p>
+                    </div>
+                </div>
+            `).join('');
+            
+            const filterBar = document.getElementById('catFilterBar');
+            filterBar.innerHTML = ['全部', ...state.categories].map(c => `
+                <button class="px-4 py-2 bg-white rounded-full text-xs shadow-sm whitespace-nowrap">${c}</button>
+            `).join('');
+        }
+
+        // --- 2. 編輯功能 ---
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modalTitle').innerText = "新增單品";
+            document.getElementById('itemName').value = "";
+            document.getElementById('itemPrice').value = "";
+            document.getElementById('modalPreview').classList.add('hidden');
+            document.getElementById('deleteBtn').classList.add('hidden');
+            fillCatDropdown();
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            editingId = id;
+            const item = state.items.find(i => i.id === id);
+            document.getElementById('modalTitle').innerText = "編輯單品";
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemPrice').value = item.price;
+            document.getElementById('itemDate').value = item.date;
+            document.getElementById('modalPreview').src = item.img;
+            document.getElementById('modalPreview').classList.remove('hidden');
+            document.getElementById('deleteBtn').classList.remove('hidden');
+            fillCatDropdown(item.cat);
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function fillCatDropdown(selected = "") {
+            const select = document.getElementById('itemCat');
+            select.innerHTML = state.categories.map(c => `<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+        }
+
+        function previewFile(input) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('modalPreview').src = e.target.result;
+                document.getElementById('modalPreview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        function saveItem() {
+            const newItem = {
+                id: editingId || Date.now(),
+                name: document.getElementById('itemName').value,
+                cat: document.getElementById('itemCat').value,
+                price: parseFloat(document.getElementById('itemPrice').value) || 0,
+                date: document.getElementById('itemDate').value,
+                img: document.getElementById('modalPreview').src,
+                lastWorn: new Date().toISOString()
+            };
+
+            if(editingId) {
+                const idx = state.items.findIndex(i => i.id === editingId);
+                state.items[idx] = newItem;
+            } else {
+                state.items.push(newItem);
+            }
+            closeModal();
+            render();
+        }
+
+        function deleteCurrentItem() {
+            if(confirm('確定要永久刪除嗎？')) {
+                state.items = state.items.filter(i => i.id !== editingId);
+                closeModal();
+                render();
+            }
+        }
+
+        function closeModal() { document.getElementById('itemModal').classList.add('hidden'); }
+
+        // --- 3. 分析功能 (斷捨離) ---
+        function renderStats() {
+            const total = state.items.reduce((sum, i) => sum + i.price, 0);
+            document.getElementById('totalValue').innerText = `$${total.toLocaleString()}`;
+            document.getElementById('avgPrice').innerText = `$${Math.round(total/(state.items.length||1))}`;
+
+            // 斷捨離邏輯：假設 6 個月沒穿
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+            
+            const toCleanup = state.items.filter(i => new Date(i.date) < sixMonthsAgo);
+            
+            document.getElementById('cleanupList').innerHTML = toCleanup.map(i => `
+                <div class="flex items-center gap-3 bg-red-50 p-3 rounded-xl">
+                    <img src="${i.img}" class="w-10 h-10 rounded-lg object-cover">
+                    <div class="flex-1">
+                        <p class="text-sm font-bold">${i.name}</p>
+                        <p class="text-[10px] text-red-400">已超過半年未穿過</p>
+                    </div>
+                    <button onclick="openEditModal(${i.id})" class="text-xs font-bold text-red-500">處理</button>
+                </div>
+            `).join('');
+        }
+
+        // --- 4. 穿搭紀錄 ---
+        function renderOutfits() {
+            const grid = document.getElementById('outfitGrid');
+            if(state.outfits.length === 0) {
+                grid.innerHTML = `<div class="text-center py-10 text-slate-300 text-sm">還沒有組合任何穿搭</div>`;
+                return;
+            }
+            // 簡易展示
+        }
+
+        // --- 5. 管理分類 ---
+        function renderSettings() {
+            const container = document.getElementById('manageCats');
+            container.innerHTML = state.categories.map(c => `
+                <div class="bg-slate-100 px-3 py-1 rounded-full text-xs flex items-center gap-2">
+                    ${c} <button onclick="removeCategory('${c}')" class="text-slate-400">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function addCategory() {
+            const input = document.getElementById('newCatInput');
+            if(input.value) {
+                state.categories.push(input.value);
+                input.value = "";
+                render();
+            }
+        }
+
+        function removeCategory(cat) {
+            state.categories = state.categories.filter(c => c !== cat);
+            render();
+        }
+
+        // --- 6. 匯入匯出 ---
+        function exportData() {
+            const blob = new Blob([JSON.stringify(state)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wardrobe_backup_${new Date().toLocaleDateString()}.json`;
+            a.click();
+        }
+
+        function importData(event) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                state = JSON.parse(e.target.result);
+                render();
+                alert('資料匯入成功！');
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+        render();
+    </script>
+</body>
+</html>
