@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>我的數位衣櫃 - 進階版</title>
+    <style>
+        :root { --primary: #6c5ce7; --bg: #f4f7f6; --accent: #a29bfe; --danger: #ff7675; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: #2d3436; max-width: 900px; margin: auto; }
+        
+        /* 表單樣式 */
+        .add-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .input-name { flex: 2; min-width: 150px; }
+        
+        /* 建議區 */
+        .suggestion-box { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; padding: 25px; border-radius: 15px; margin-bottom: 30px; text-align: center; position: relative; }
+        
+        /* 分類按鈕 */
+        .stats-container { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .category-btn { 
+            padding: 10px 18px; border: none; border-radius: 20px; 
+            background: #fff; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        .category-btn.active { background: var(--primary); color: white; }
+        .category-btn span { margin-left: 6px; font-weight: bold; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
+
+        /* 衣物卡片 */
+        .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        .item-card { 
+            background: white; padding: 15px; border-radius: 12px; text-align: center; 
+            position: relative; border-bottom: 4px solid var(--accent); transition: 0.2s;
+        }
+        .delete-btn { 
+            position: absolute; top: 5px; right: 5px; background: none; border: none; 
+            color: var(--danger); cursor: pointer; font-size: 1.2em; display: none;
+        }
+        .item-card:hover .delete-btn { display: block; }
+        .color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid #ddd; margin-right: 5px; }
+
+        .btn-main { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center;">👗 我的數位衣櫃 (管理版)</h2>
+
+    <div class="add-box">
+        <strong>新增：</strong>
+        <input type="text" id="new-item-name" class="input-name" placeholder="名稱 (如：亞麻襯衫)">
+        <select id="new-item-category">
+            <option value="上裝">上裝</option>
+            <option value="下裝">下裝</option>
+            <option value="外套">外套</option>
+            <option value="配件">配件</option>
+        </select>
+        <select id="new-item-color">
+            <option value="白色">⚪ 白色</option>
+            <option value="黑色">⚫ 黑色</option>
+            <option value="藍色">🔵 藍色</option>
+            <option value="紅色">🔴 紅色</option>
+            <option value="綠色">🟢 綠色</option>
+            <option value="大地色">🪵 大地色</option>
+        </select>
+        <button class="btn-main" onclick="addItem()">加入</button>
+    </div>
+
+    <div class="suggestion-box">
+        <h3 style="margin-top: 0;">💡 今日穿搭靈感</h3>
+        <div id="suggestion-result" style="font-size: 1.2em; margin-bottom: 15px; font-weight: bold;">準備好出門了嗎？</div>
+        <button class="btn-main" style="background: white; color: var(--primary);" onclick="generateOutfit()">隨機挑一套</button>
+    </div>
+
+    <div id="category-tags" class="stats-container"></div>
+
+    <div id="item-list" class="item-grid"></div>
+
+<script>
+    // 預設資料
+    let myWardrobe = [
+        { id: 1, name: "白色素T", category: "上裝", color: "白色", colorCode: "#ffffff" },
+        { id: 2, name: "單寧牛仔褲", category: "下裝", color: "藍色", colorCode: "#3498db" }
+    ];
+
+    const categoryTypes = ["上裝", "下裝", "外套", "配件"];
+    let currentFilter = "全部";
+
+    // 顏色對應表 (簡單處理顯示顏色)
+    const colorMap = { "白色": "#ffffff", "黑色": "#2d3436", "藍色": "#3498db", "紅色": "#e74c3c", "綠色": "#27ae60", "大地色": "#a1887f" };
+
+    function init() {
+        renderAll();
+    }
+
+    function renderAll() {
+        renderCategoryButtons();
+        renderItemList();
+    }
+
+    // 新增
+    function addItem() {
+        const name = document.getElementById('new-item-name');
+        const cat = document.getElementById('new-item-category');
+        const col = document.getElementById('new-item-color');
+
+        if (!name.value) return alert("請輸入名稱");
+
+        myWardrobe.push({
+            id: Date.now(),
+            name: name.value,
+            category: cat.value,
+            color: col.value,
+            colorCode: colorMap[col.value]
+        });
+
+        name.value = "";
+        renderAll();
+    }
+
+    // 刪除
+    function deleteItem(id) {
+        if (confirm("確定要刪除這件衣服嗎？")) {
+            myWardrobe = myWardrobe.filter(item => item.id !== id);
+            renderAll();
+        }
+    }
+
+    function renderCategoryButtons() {
+        const container = document.getElementById('category-tags');
+        let html = `<button class="category-btn ${currentFilter === '全部' ? 'active' : ''}" onclick="setFilter('全部')">全部 <span>${myWardrobe.length}</span></button>`;
+
+        categoryTypes.forEach(cat => {
+            const count = myWardrobe.filter(item => item.category === cat).length;
+            html += `<button class="category-btn ${currentFilter === cat ? 'active' : ''}" onclick="setFilter('${cat}')">${cat} <span>${count}</span></button>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function setFilter(cat) {
+        currentFilter = cat;
+        renderAll();
+    }
+
+    function renderItemList() {
+        const list = document.getElementById('item-list');
+        const filtered = currentFilter === "全部" ? myWardrobe : myWardrobe.filter(i => i.category === currentFilter);
+
+        list.innerHTML = filtered.map(item => `
+            <div class="item-card">
+                <button class="delete-btn" onclick="deleteItem(${item.id})">ⓧ</button>
+                <div style="font-size: 2em; margin-bottom: 5px;">${getEmoji(item.category)}</div>
+                <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">
+                    <span class="color-dot" style="background: ${item.colorCode}"></span>${item.color}
+                </div>
+                <strong>${item.name}</strong>
+            </div>
+        `).join('');
+    }
+
+    function getEmoji(cat) {
+        return { "上裝": "👕", "下裝": "👖", "外套": "🧥", "配件": "🧢" }[cat] || "✨";
+    }
+
+    // 穿搭建議 (包含顏色描述)
+    function generateOutfit() {
+        const tops = myWardrobe.filter(i => i.category === "上裝");
+        const bottoms = myWardrobe.filter(i => i.category === "下裝");
+
+        if (tops.length === 0 || bottoms.length === 0) {
+            document.getElementById('suggestion-result').innerText = "⚠️ 缺少上裝或下裝，無法搭配";
+            return;
+        }
+
+        const top = tops[Math.floor(Math.random() * tops.length)];
+        const bottom = bottoms[Math.floor(Math.random() * bottoms.length)];
+        
+        document.getElementById('suggestion-result').innerHTML = `
+            穿上這套：<span style="text-decoration: underline;">${itemToString(top)}</span> 
+            配 
+            <span style="text-decoration: underline;">${itemToString(bottom)}</span>
+        `;
+    }
+
+    function itemToString(item) {
+        return `${item.color}${item.name}`;
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
